@@ -1,0 +1,4 @@
+github.com/ShearlingEnMouton/library v0.1.0-rc00 h1:ShLtz8dfPnP5PLG4GzhWj+5l38kyeKvq9s0amZmURyA=
+github.com/ShearlingEnMouton/library v0.1.0-rc00/go.mod h1:2jKavv4WQc+jiN7BDa4X4UHI4lixnV6CK5VsfInThIQ=
+github.com/gorilla/mux v1.8.1 h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=
+github.com/gorilla/mux v1.8.1/go.mod h1:AKf9I4AEqPTmMytcMc0KkNouC66V3BtZ4qD5fmWSiMQ=
