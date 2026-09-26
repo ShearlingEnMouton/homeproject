@@ -200,21 +200,11 @@ definitions:
         type: "string"
       created_at:
         type: "string"
-      last_seen_at:
-        type: "string"
+        format: "date-time"
     required:
       - id
       - name
       - created_at
-      - last_seen_at
-
-  Response:
-    type: "object"
-    properties:
-      message:
-        type: "string"
-    required:
-      - message
 
   Reading:
     type: "object"
@@ -285,3 +275,14 @@ definitions:
     required:
       - rows
       - total
+
+  Response:
+    type: "object"
+    properties:
+      message:
+        type: "string"
+      token:
+        type: "string"
+    required:
+      - message
+      - token

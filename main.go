@@ -10,36 +10,96 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	// WARNING!
-	// Change this to a fully-qualified import path
-	// once you place this file into your project.
-	// For example,
-	//
-	//    sw "github.com/myname/myrepo/go"
-	//
+
+	s "github.com/ShearlingEnMouton/homeproject/homeprojectserver"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	log.Printf("Server started hosting 'Homeproject API' version '1.0.0'.")
-
-	termChan := make(chan os.Signal)
-	signal.Notify(termChan, syscall.SIGTERM) // Received after the preStop hook
-
-	server := http.Server{
-		Addr: fmt.Sprintf(":%v", 8080),
-		// Handler: sw.NewRouter(sw.JwtSecretKey),
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		log.Fatalf("load .env: %v", err)
 	}
 
-	go server.ListenAndServe()
+	var ok bool
+	s.DBHostname, ok = os.LookupEnv("DB_HOST")
+	if !ok {
+		log.Fatalf("missing env DB_HOST")
+	}
+	s.DBPort, ok = os.LookupEnv("DB_PORT")
+	if !ok {
+		log.Fatalf("missing env DB_PORT")
+	}
+	s.DBUser, ok = os.LookupEnv("DB_USER")
+	if !ok {
+		log.Fatalf("missing env DB_USER")
+	}
+	s.DBPassword, ok = os.LookupEnv("DB_PASSWORD")
+	if !ok {
+		log.Fatalf("missing env DB_PASSWORD")
+	}
+	s.DBName, ok = os.LookupEnv("DB_NAME")
+	if !ok {
+		log.Fatalf("missing env DB_NAME")
+	}
+
+	var err error
+	s.DBConn, err = pgxpool.New(context.Background(), s.DBUrl())
+	if err != nil {
+		log.Fatalf("Failed to connect to the DB: %s", err)
+	}
+	defer s.DBConn.Close()
+
+	s.MQTTBroker, ok = os.LookupEnv("MQTT_BROKER")
+	if !ok {
+		log.Fatalf("missing env MQTT_BROKER")
+	}
+	s.MQTTUser, ok = os.LookupEnv("MQTT_USER")
+	if !ok {
+		log.Fatalf("missing env MQTT_USER")
+	}
+	s.MQTTPassword, ok = os.LookupEnv("MQTT_PASSWORD")
+	if !ok {
+		log.Fatalf("missing env MQTT_PASSWORD")
+	}
+	s.MQTTClientID, ok = os.LookupEnv("MQTT_CLIENT_ID")
+	if !ok {
+		log.Fatalf("missing env MQTT_CLIENT_ID")
+	}
+
+	if err := s.ConnectMQTT(); err != nil {
+		log.Fatalf("Failed to connect to MQTT: %s", err)
+	}
+	defer s.MQTTClient.Disconnect(250)
+
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, syscall.SIGTERM, os.Interrupt) // Received after the preStop hook
+
+	server := http.Server{
+		Addr:    fmt.Sprintf(":%v", 8080),
+		Handler: s.NewRouter(""),
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		log.Printf("Server started hosting 'Homeproject API' on %s", server.Addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+	}()
 
 	select {
+	case err := <-errChan:
+		log.Fatalf("server error: %v", err)
 	case c := <-termChan:
 		log.Printf("Received signal %v, stopping gracefully", c)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)

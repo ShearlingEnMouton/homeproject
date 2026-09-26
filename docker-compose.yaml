@@ -1,0 +1,14 @@
+name: homeproject
+
+services:
+  homeproject:
+    build:
+      context: .
+      ssh:
+        - default
+    image: homeproject:latest
+    container_name: homeproject
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"

@@ -1,0 +1,6 @@
+.git
+.env
+.gen
+.swagger-codegen
+Dockerfile
+docker-compose.yaml

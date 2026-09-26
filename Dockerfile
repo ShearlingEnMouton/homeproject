@@ -1,14 +1,24 @@
-FROM golang:1.10 AS build
-WORKDIR /go/src
-COPY go ./go
-COPY main.go .
+# syntax=docker/dockerfile:1
+FROM golang:1.27-alpine AS build
 
-ENV CGO_ENABLED=0
-RUN go get -d -v ./...
+RUN apk add --no-cache git openssh-client ca-certificates
+RUN git config --global url."git@github.com:".insteadOf "https://github.com/" \
+    && mkdir -p -m 0700 /root/.ssh \
+    && ssh-keyscan github.com >> /root/.ssh/known_hosts
 
-RUN go build -a -installsuffix cgo -o swagger .
+ENV CGO_ENABLED=0 GOPRIVATE=github.com/ShearlingEnMouton/*
+WORKDIR /src
 
-FROM scratch AS runtime
-COPY --from=build /go/src/swagger ./
-EXPOSE 8080/tcp
-ENTRYPOINT ["./swagger"]
+COPY go.mod go.sum ./
+RUN --mount=type=ssh --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/homeproject .
+
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /out/homeproject /homeproject
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/homeproject"]

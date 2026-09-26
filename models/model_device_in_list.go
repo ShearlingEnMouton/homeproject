@@ -8,13 +8,15 @@
  */
 package models
 
+import (
+	"time"
+)
+
 type DeviceInList struct {
 
 	Id string `json:"id"`
 
 	Name string `json:"name"`
 
-	CreatedAt string `json:"created_at"`
-
-	LastSeenAt string `json:"last_seen_at"`
+	CreatedAt time.Time `json:"created_at"`
 }
