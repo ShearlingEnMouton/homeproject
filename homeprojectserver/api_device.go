@@ -18,6 +18,7 @@ import (
 	"github.com/ShearlingEnMouton/homeproject/models"
 	"github.com/ShearlingEnMouton/library/grpctoken"
 	"github.com/ShearlingEnMouton/library/logger"
+	"github.com/gorilla/mux"
 )
 
 func GetDevices(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +157,43 @@ func GetDevices(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateDevice(w http.ResponseWriter, r *http.Request) {
+	ctx, grpcToken := grpctoken.CreateContextFromHeader(r, "")
+	id := mux.Vars(r)["id"]
+
+	req := models.UpdateDeviceRequest{}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		writeStandardResponse(r, w, grpcToken, "invalid request body")
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || len(req.Name) > 100 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		writeStandardResponse(r, w, grpcToken, "name must be 1-100 characters")
+		return
+	}
+
+	tag, err := DBConn.Exec(ctx, "UPDATE devices SET name = $1 WHERE id = $2", req.Name, id)
+	if err != nil {
+		logger.Err(grpcToken, "Error UpdateDevice query: %s", err)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		writeStandardResponse(r, w, grpcToken, fmt.Sprintf("Error UpdateDevice query: %s", err))
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		writeStandardResponse(r, w, grpcToken, "device not found")
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+	writeStandardResponse(r, w, grpcToken, "device updated")
 }

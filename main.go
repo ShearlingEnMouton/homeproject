@@ -21,6 +21,7 @@ import (
 	"time"
 
 	s "github.com/ShearlingEnMouton/homeproject/homeprojectserver"
+	"github.com/ShearlingEnMouton/homeproject/web"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -84,9 +85,12 @@ func main() {
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, syscall.SIGTERM, os.Interrupt) // Received after the preStop hook
 
+	router := s.NewRouter("")
+	router.PathPrefix("/").Handler(web.Handler())
+
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%v", 8080),
-		Handler: s.NewRouter(""),
+		Handler: router,
 	}
 
 	errChan := make(chan error, 1)
