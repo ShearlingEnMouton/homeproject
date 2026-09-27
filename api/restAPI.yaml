@@ -1,0 +1,288 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "Homeproject API"
+
+basePath: "/api/homeproject"
+
+tags:
+  - name: "Device"
+    description: "Endpoints for devices"
+  - name: "Reading"
+    description: "Endpoints for sensor readings"
+
+paths:
+  /devices:
+    get:
+      tags:
+        - "Device"
+      summary: "Get all devices"
+      produces:
+        - "application/json"
+      operationId: "getDevices"
+      parameters:
+        - name: "search"
+          in: "query"
+          description: "Search string"
+          required: false
+          type: "string"
+        - name: "sort"
+          in: "query"
+          description: "Sort column"
+          required: false
+          type: "string"
+        - name: "order"
+          in: "query"
+          description: "Sort order"
+          required: false
+          type: "string"
+          enum:
+            - "asc"
+            - "desc"
+          default: "asc"
+        - name: "limit"
+          in: "query"
+          description: "Limit number of results"
+          required: false
+          type: "integer"
+          format: "int64"
+        - name: "offset"
+          in: "query"
+          description: "Start index of results"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        200:
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/DeviceList"
+        401:
+          description: "Unauthorized"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Not Found"
+
+  /device/{id}:
+    patch:
+      tags:
+        - "Device"
+      summary: "Update a device"
+      produces:
+        - "application/json"
+      operationId: "updateDevice"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateDeviceRequest"
+      responses:
+        200:
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/Response"
+        401:
+          description: "Unauthorized"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Not Found"
+
+  /device/{id}/latest:
+    get:
+      tags:
+        - "Reading"
+      summary: "Get the latest reading of a device with derived climate indicators"
+      produces:
+        - "application/json"
+      operationId: "getDeviceLatest"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/LatestReading"
+        401:
+          description: "Unauthorized"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Not Found"
+
+  /device/{id}/readings:
+    get:
+      tags:
+        - "Reading"
+      summary: "Get readings of a device for a time range"
+      produces:
+        - "application/json"
+      operationId: "getDeviceReadings"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+        - name: "from"
+          in: "query"
+          description: "Start of range (RFC3339), defaults to 24 hours ago"
+          required: false
+          type: "string"
+          format: "date-time"
+        - name: "to"
+          in: "query"
+          description: "End of range (RFC3339), defaults to now"
+          required: false
+          type: "string"
+          format: "date-time"
+        - name: "bucket"
+          in: "query"
+          description: "Aggregation interval"
+          required: false
+          type: "string"
+          enum:
+            - "raw"
+            - "1h"
+            - "1d"
+          default: "raw"
+      responses:
+        200:
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/ReadingList"
+        400:
+          description: "Bad Request"
+        401:
+          description: "Unauthorized"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Not Found"
+
+definitions:
+  UpdateDeviceRequest:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+    required:
+      - name
+
+  DeviceList:
+    type: "object"
+    properties:
+      rows:
+        type: "array"
+        items:
+          $ref: "#/definitions/DeviceInList"
+      total:
+        type: "integer"
+        format: "int64"
+    required:
+      - rows
+      - total
+
+  DeviceInList:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      name:
+        type: "string"
+      created_at:
+        type: "string"
+        format: "date-time"
+    required:
+      - id
+      - name
+      - created_at
+
+  Reading:
+    type: "object"
+    properties:
+      measured_at:
+        type: "string"
+        format: "date-time"
+      temp_c:
+        type: "number"
+        format: "float"
+        x-nullable: true
+      humidity:
+        type: "number"
+        format: "float"
+        x-nullable: true
+      battery:
+        type: "integer"
+        format: "int32"
+        x-nullable: true
+    required:
+      - measured_at
+
+  Climate:
+    type: "object"
+    properties:
+      dew_point_c:
+        type: "number"
+        format: "float"
+      absolute_humidity:
+        type: "number"
+        format: "float"
+      humidex:
+        type: "number"
+        format: "float"
+      mold_risk:
+        type: "string"
+        enum:
+          - "low"
+          - "moderate"
+          - "high"
+          - "very_high"
+    required:
+      - dew_point_c
+      - absolute_humidity
+      - humidex
+      - mold_risk
+
+  LatestReading:
+    type: "object"
+    properties:
+      reading:
+        $ref: "#/definitions/Reading"
+      climate:
+        $ref: "#/definitions/Climate"
+    required:
+      - reading
+
+  ReadingList:
+    type: "object"
+    properties:
+      rows:
+        type: "array"
+        items:
+          $ref: "#/definitions/Reading"
+      total:
+        type: "integer"
+        format: "int64"
+    required:
+      - rows
+      - total
+
+  Response:
+    type: "object"
+    properties:
+      message:
+        type: "string"
+      token:
+        type: "string"
+    required:
+      - message
+      - token

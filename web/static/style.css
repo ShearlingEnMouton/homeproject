@@ -1,0 +1,299 @@
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #1c2230;
+  --muted: #6b7280;
+  --border: #e4e7ec;
+  --grid: rgba(107, 114, 128, 0.12);
+  --accent: #2563eb;
+  --low: #16a34a;
+  --moderate: #ca8a04;
+  --high: #ea580c;
+  --very-high: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --card: #181b22;
+    --text: #e6e8ec;
+    --muted: #9aa1ad;
+    --border: #262a33;
+    --grid: rgba(154, 161, 173, 0.10);
+    --accent: #3b82f6;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header,
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.updated {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.updated.stale {
+  color: var(--very-high);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.card,
+.metric {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.metric.selectable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.metric.selectable:hover {
+  border-color: var(--metric-color);
+}
+
+.metric.selected {
+  border-color: var(--metric-color);
+  box-shadow: inset 0 0 0 1px var(--metric-color);
+}
+
+.metric.selected .label {
+  color: var(--metric-color);
+}
+
+.label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.value {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.badge {
+  --risk-color: var(--muted);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--risk-color);
+  background: color-mix(in srgb, var(--risk-color) 14%, transparent);
+}
+
+.badge.risk-low { --risk-color: var(--low); }
+.badge.risk-moderate { --risk-color: var(--moderate); }
+.badge.risk-high { --risk-color: var(--high); }
+.badge.risk-very_high { --risk-color: var(--very-high); }
+
+.chart-card {
+  margin-top: 12px;
+  padding: 16px;
+}
+
+.chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ranges {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.ranges button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ranges button.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.chart-wrap {
+  position: relative;
+}
+
+#chart {
+  width: 100%;
+  min-height: 300px;
+}
+
+.u-cursor-x {
+  border-right: 1px dashed var(--muted) !important;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.summary {
+  display: flex;
+  gap: 32px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.message {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  header,
+  main {
+    padding: 12px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .metric {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 16px;
+  }
+
+  .metric .value {
+    margin-left: auto;
+    font-size: 1.2rem;
+  }
+
+  .metric.selectable::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    margin: 0 4px 4px 14px;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: rotate(45deg);
+    transition: transform 0.2s;
+  }
+
+  .metric.selected::after {
+    margin-bottom: -4px;
+    border-color: var(--metric-color);
+    transform: rotate(-135deg);
+  }
+
+  .chart-card {
+    margin-top: 0;
+    padding: 12px;
+  }
+
+  .chart-title h2 {
+    display: none;
+  }
+
+  .ranges {
+    margin-left: auto;
+  }
+
+  #chart {
+    min-height: 220px;
+  }
+
+  .summary {
+    justify-content: space-between;
+    gap: 12px;
+  }
+}

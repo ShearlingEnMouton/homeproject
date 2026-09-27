@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Climate</title>
+  <link rel="stylesheet" href="/vendor/uPlot.min.css">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/vendor/uPlot.iife.min.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1 id="device-name">Home Climate</h1>
+    <span id="updated" class="updated"></span>
+  </header>
+  <main>
+    <section id="current" class="grid"></section>
+    <section id="chart-card" class="card chart-card">
+      <div class="chart-header">
+        <div class="chart-title">
+          <h2 id="chart-title"></h2>
+          <span id="risk-badge" class="badge" hidden></span>
+        </div>
+        <div class="ranges" role="group">
+          <button type="button" data-range="24h" class="active">24시간</button>
+          <button type="button" data-range="7d">7일</button>
+          <button type="button" data-range="30d">30일</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div id="chart"></div>
+        <div id="chart-tooltip" class="tooltip" hidden></div>
+      </div>
+      <div id="chart-summary" class="summary"></div>
+    </section>
+  </main>
+</body>
+</html>

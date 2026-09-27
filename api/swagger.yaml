@@ -1,0 +1,342 @@
+---
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "Homeproject API"
+basePath: "/api/homeproject"
+tags:
+- name: "Device"
+  description: "Endpoints for devices"
+- name: "Reading"
+  description: "Endpoints for sensor readings"
+paths:
+  /devices:
+    get:
+      tags:
+      - "Device"
+      summary: "Get all devices"
+      operationId: "getDevices"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "search"
+        in: "query"
+        description: "Search string"
+        required: false
+        type: "string"
+        x-exportParamName: "Search"
+        x-optionalDataType: "String"
+      - name: "sort"
+        in: "query"
+        description: "Sort column"
+        required: false
+        type: "string"
+        x-exportParamName: "Sort"
+        x-optionalDataType: "String"
+      - name: "order"
+        in: "query"
+        description: "Sort order"
+        required: false
+        type: "string"
+        default: "asc"
+        enum:
+        - "asc"
+        - "desc"
+        x-exportParamName: "Order"
+        x-optionalDataType: "String"
+      - name: "limit"
+        in: "query"
+        description: "Limit number of results"
+        required: false
+        type: "integer"
+        format: "int64"
+        x-exportParamName: "Limit"
+        x-optionalDataType: "Int64"
+      - name: "offset"
+        in: "query"
+        description: "Start index of results"
+        required: false
+        type: "integer"
+        format: "int64"
+        x-exportParamName: "Offset"
+        x-optionalDataType: "Int64"
+      responses:
+        "200":
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/DeviceList"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "Not Found"
+  /device/{id}:
+    patch:
+      tags:
+      - "Device"
+      summary: "Update a device"
+      operationId: "updateDevice"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        required: true
+        type: "string"
+        x-exportParamName: "Id"
+      - in: "body"
+        name: "body"
+        required: true
+        schema:
+          $ref: "#/definitions/UpdateDeviceRequest"
+        x-exportParamName: "Body"
+      responses:
+        "200":
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/Response"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "Not Found"
+  /device/{id}/latest:
+    get:
+      tags:
+      - "Reading"
+      summary: "Get the latest reading of a device with derived climate indicators"
+      operationId: "getDeviceLatest"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        required: true
+        type: "string"
+        x-exportParamName: "Id"
+      responses:
+        "200":
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/LatestReading"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "Not Found"
+  /device/{id}/readings:
+    get:
+      tags:
+      - "Reading"
+      summary: "Get readings of a device for a time range"
+      operationId: "getDeviceReadings"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        required: true
+        type: "string"
+        x-exportParamName: "Id"
+      - name: "from"
+        in: "query"
+        description: "Start of range (RFC3339), defaults to 24 hours ago"
+        required: false
+        type: "string"
+        format: "date-time"
+        x-exportParamName: "From"
+        x-optionalDataType: "Time"
+      - name: "to"
+        in: "query"
+        description: "End of range (RFC3339), defaults to now"
+        required: false
+        type: "string"
+        format: "date-time"
+        x-exportParamName: "To"
+        x-optionalDataType: "Time"
+      - name: "bucket"
+        in: "query"
+        description: "Aggregation interval"
+        required: false
+        type: "string"
+        default: "raw"
+        enum:
+        - "raw"
+        - "1h"
+        - "1d"
+        x-exportParamName: "Bucket"
+        x-optionalDataType: "String"
+      responses:
+        "200":
+          description: "Ok"
+          schema:
+            $ref: "#/definitions/ReadingList"
+        "400":
+          description: "Bad Request"
+        "401":
+          description: "Unauthorized"
+        "403":
+          description: "Forbidden"
+        "404":
+          description: "Not Found"
+definitions:
+  UpdateDeviceRequest:
+    type: "object"
+    required:
+    - "name"
+    properties:
+      name:
+        type: "string"
+  DeviceList:
+    type: "object"
+    required:
+    - "rows"
+    - "total"
+    properties:
+      rows:
+        type: "array"
+        items:
+          $ref: "#/definitions/DeviceInList"
+      total:
+        type: "integer"
+        format: "int64"
+    example:
+      total: 0
+      rows:
+      - name: "name"
+        created_at: "created_at"
+        id: "id"
+      - name: "name"
+        created_at: "created_at"
+        id: "id"
+  DeviceInList:
+    type: "object"
+    required:
+    - "created_at"
+    - "id"
+    - "name"
+    properties:
+      id:
+        type: "string"
+      name:
+        type: "string"
+      created_at:
+        type: "string"
+    example:
+      name: "name"
+      created_at: "created_at"
+      id: "id"
+  Reading:
+    type: "object"
+    required:
+    - "measured_at"
+    properties:
+      measured_at:
+        type: "string"
+        format: "date-time"
+      temp_c:
+        type: "number"
+        format: "float"
+        x-nullable: true
+      humidity:
+        type: "number"
+        format: "float"
+        x-nullable: true
+      battery:
+        type: "integer"
+        format: "int32"
+        x-nullable: true
+    example:
+      measured_at: "2000-01-23T04:56:07.000+00:00"
+      humidity: 6.0274563
+      temp_c: 0.8008282
+      battery: 1
+  Climate:
+    type: "object"
+    required:
+    - "absolute_humidity"
+    - "dew_point_c"
+    - "humidex"
+    - "mold_risk"
+    properties:
+      dew_point_c:
+        type: "number"
+        format: "float"
+      absolute_humidity:
+        type: "number"
+        format: "float"
+      humidex:
+        type: "number"
+        format: "float"
+      mold_risk:
+        type: "string"
+        enum:
+        - "low"
+        - "moderate"
+        - "high"
+        - "very_high"
+    example:
+      dew_point_c: 5.962134
+      absolute_humidity: 5.637377
+      humidex: 2.302136
+      mold_risk: "low"
+  LatestReading:
+    type: "object"
+    required:
+    - "reading"
+    properties:
+      reading:
+        $ref: "#/definitions/Reading"
+      climate:
+        $ref: "#/definitions/Climate"
+    example:
+      reading:
+        measured_at: "2000-01-23T04:56:07.000+00:00"
+        humidity: 6.0274563
+        temp_c: 0.8008282
+        battery: 1
+      climate:
+        dew_point_c: 5.962134
+        absolute_humidity: 5.637377
+        humidex: 2.302136
+        mold_risk: "low"
+  ReadingList:
+    type: "object"
+    required:
+    - "rows"
+    - "total"
+    properties:
+      rows:
+        type: "array"
+        items:
+          $ref: "#/definitions/Reading"
+      total:
+        type: "integer"
+        format: "int64"
+    example:
+      total: 0
+      rows:
+      - measured_at: "2000-01-23T04:56:07.000+00:00"
+        humidity: 6.0274563
+        temp_c: 0.8008282
+        battery: 1
+      - measured_at: "2000-01-23T04:56:07.000+00:00"
+        humidity: 6.0274563
+        temp_c: 0.8008282
+        battery: 1
+  Response:
+    type: "object"
+    required:
+    - "message"
+    - "token"
+    properties:
+      message:
+        type: "string"
+      token:
+        type: "string"
+    example:
+      message: "message"
+      token: "token"
