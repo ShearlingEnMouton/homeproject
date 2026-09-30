@@ -9,7 +9,6 @@
 package models
 
 type LatestReading struct {
-
 	Reading *Reading `json:"reading"`
 
 	Climate *Climate `json:"climate,omitempty"`

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -81,6 +82,32 @@ func main() {
 		log.Fatalf("Failed to connect to MQTT: %s", err)
 	}
 	defer s.MQTTClient.Disconnect(250)
+
+	s.ApplicationId, ok = os.LookupEnv("APPLICATION_ID")
+	if !ok {
+		log.Fatalf("missing env APPLICATION_ID")
+	}
+
+	// Meteo-France integration is optional: it only turns on once a station ID
+	// and home coordinates are configured, so the app keeps running fine without it.
+	s.MeteoFranceStationID = os.Getenv("METEOFRANCE_STATION_ID")
+	latStr, hasLat := os.LookupEnv("METEOFRANCE_LAT")
+	lonStr, hasLon := os.LookupEnv("METEOFRANCE_LON")
+	s.MeteoFranceEnabled = s.MeteoFranceStationID != "" && hasLat && hasLon
+	if s.MeteoFranceEnabled {
+		s.MeteoFranceLat, err = strconv.ParseFloat(latStr, 64)
+		if err != nil {
+			log.Fatalf("invalid env METEOFRANCE_LAT: %s", err)
+		}
+		s.MeteoFranceLon, err = strconv.ParseFloat(lonStr, 64)
+		if err != nil {
+			log.Fatalf("invalid env METEOFRANCE_LON: %s", err)
+		}
+		s.StartMeteoFranceScheduler(context.Background())
+		log.Printf("Meteo-France integration enabled for station %s", s.MeteoFranceStationID)
+	} else {
+		log.Printf("Meteo-France integration disabled (set METEOFRANCE_STATION_ID, METEOFRANCE_LAT, METEOFRANCE_LON to enable)")
+	}
 
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, syscall.SIGTERM, os.Interrupt) // Received after the preStop hook

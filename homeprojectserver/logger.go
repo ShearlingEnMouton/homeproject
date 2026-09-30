@@ -43,7 +43,7 @@ func init() {
 }
 
 /*
-  StatusRecorder is a wrapper around http.ResponseWriter. It delegates all interface methods to its inner http.ResponseWriter but captures the status code in WriteHeader to extract it after the handler is called.
+StatusRecorder is a wrapper around http.ResponseWriter. It delegates all interface methods to its inner http.ResponseWriter but captures the status code in WriteHeader to extract it after the handler is called.
 */
 type StatusRecorder struct {
 	Writer http.ResponseWriter

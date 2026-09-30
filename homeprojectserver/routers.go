@@ -111,4 +111,20 @@ var routes = Routes{
 		GetDeviceReadings,
 		[]string{},
 	},
+
+	Route{
+		"GetMeteoFranceCurrent",
+		strings.ToUpper("Get"),
+		"/api/homeproject/meteofrance/current",
+		GetMeteoFranceCurrent,
+		[]string{},
+	},
+
+	Route{
+		"GetMeteoFranceForecast",
+		strings.ToUpper("Get"),
+		"/api/homeproject/meteofrance/forecast",
+		GetMeteoFranceForecast,
+		[]string{},
+	},
 }

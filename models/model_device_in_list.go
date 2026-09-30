@@ -13,7 +13,6 @@ import (
 )
 
 type DeviceInList struct {
-
 	Id string `json:"id"`
 
 	Name string `json:"name"`

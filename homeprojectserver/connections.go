@@ -23,6 +23,15 @@ var (
 	MQTTPassword string
 	MQTTClientID string
 	MQTTClient   mqtt.Client
+
+	ApplicationId string
+
+	// Optional: Meteo-France integration. Enabled only when all three are set,
+	// so the app stays safe to run without them (see main.go).
+	MeteoFranceStationID string
+	MeteoFranceLat       float64
+	MeteoFranceLon       float64
+	MeteoFranceEnabled   bool
 )
 
 func DBUrl() string {

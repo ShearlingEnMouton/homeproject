@@ -9,6 +9,5 @@
 package models
 
 type UpdateDeviceRequest struct {
-
 	Name string `json:"name"`
 }

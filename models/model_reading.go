@@ -13,7 +13,6 @@ import (
 )
 
 type Reading struct {
-
 	MeasuredAt time.Time `json:"measured_at"`
 
 	TempC *float32 `json:"temp_c,omitempty"`

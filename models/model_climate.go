@@ -9,7 +9,6 @@
 package models
 
 type Climate struct {
-
 	DewPointC float32 `json:"dew_point_c"`
 
 	AbsoluteHumidity float32 `json:"absolute_humidity"`

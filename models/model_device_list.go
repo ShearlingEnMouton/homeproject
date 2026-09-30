@@ -9,7 +9,6 @@
 package models
 
 type DeviceList struct {
-
 	Rows []DeviceInList `json:"rows"`
 
 	Total int64 `json:"total"`

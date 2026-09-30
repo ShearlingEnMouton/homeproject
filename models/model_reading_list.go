@@ -9,7 +9,6 @@
 package models
 
 type ReadingList struct {
-
 	Rows []Reading `json:"rows"`
 
 	Total int64 `json:"total"`

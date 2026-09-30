@@ -12,7 +12,14 @@
 <body>
   <header>
     <h1 id="device-name">Home Climate</h1>
-    <span id="updated" class="updated"></span>
+    <div class="header-meta">
+      <span id="updated" class="updated"></span>
+      <div class="lang-switch" id="lang-switch" role="group">
+        <button type="button" data-lang="ko">한국어</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="fr">FR</button>
+      </div>
+    </div>
   </header>
   <main>
     <section id="current" class="grid"></section>
@@ -23,9 +30,9 @@
           <span id="risk-badge" class="badge" hidden></span>
         </div>
         <div class="ranges" role="group">
-          <button type="button" data-range="24h" class="active">24시간</button>
-          <button type="button" data-range="7d">7일</button>
-          <button type="button" data-range="30d">30일</button>
+          <button type="button" data-range="24h" class="active"></button>
+          <button type="button" data-range="7d"></button>
+          <button type="button" data-range="30d"></button>
         </div>
       </div>
       <div class="chart-wrap">
@@ -33,6 +40,14 @@
         <div id="chart-tooltip" class="tooltip" hidden></div>
       </div>
       <div id="chart-summary" class="summary"></div>
+    </section>
+    <section id="meteofrance" class="card meteofrance-card" hidden>
+      <div class="mf-header">
+        <h2 id="mf-title"></h2>
+        <span id="mf-updated" class="updated"></span>
+      </div>
+      <div id="mf-current" class="mf-current"></div>
+      <div id="mf-forecast" class="mf-forecast"></div>
     </section>
   </main>
 </body>
