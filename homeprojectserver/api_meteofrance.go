@@ -18,6 +18,7 @@ const meteoFranceForecastHourlyLimit = 48
 
 func GetMeteoFranceCurrent(w http.ResponseWriter, r *http.Request) {
 	ctx, grpcToken := grpctoken.CreateContextFromHeader(r, "")
+	refreshMeteoFranceOnDemand(ctx)
 
 	cur := models.MeteoFranceCurrent{}
 	err := DBConn.QueryRow(ctx, `
@@ -50,6 +51,7 @@ func GetMeteoFranceCurrent(w http.ResponseWriter, r *http.Request) {
 
 func GetMeteoFranceForecast(w http.ResponseWriter, r *http.Request) {
 	ctx, grpcToken := grpctoken.CreateContextFromHeader(r, "")
+	refreshMeteoFranceOnDemand(ctx)
 
 	daily, err := queryMeteoFranceDailyForecast(ctx)
 	if err != nil {
@@ -119,7 +121,7 @@ func queryMeteoFranceHourlyForecast(ctx context.Context) ([]models.MeteoFranceHo
 	rows, err := DBConn.Query(ctx, `
 	SELECT forecast_for, temp_c, windchill_c, humidity, wind_speed, wind_direction, rain_1h, clouds, weather_desc
 	FROM meteofrance_forecast_hourly
-	WHERE forecast_for >= now()
+	WHERE forecast_for >= date_trunc('hour', now())
 	ORDER BY forecast_for
 	LIMIT $1
 	`, meteoFranceForecastHourlyLimit)

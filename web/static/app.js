@@ -39,6 +39,10 @@ const i18n = {
     loadError: "데이터를 불러오지 못했어요.",
     meteofranceTitle: "실외 날씨",
     meteofranceWindLabel: "풍속",
+    mfNow: "지금",
+    mfToday: "오늘",
+    mfFeelsLike: "체감",
+    mfRain: "강수",
     meteofranceNoData: "날씨 데이터가 아직 없어요.",
   },
   en: {
@@ -66,6 +70,10 @@ const i18n = {
     loadError: "Failed to load data.",
     meteofranceTitle: "Outdoor weather",
     meteofranceWindLabel: "Wind",
+    mfNow: "Now",
+    mfToday: "Today",
+    mfFeelsLike: "Feels like",
+    mfRain: "Rain",
     meteofranceNoData: "No weather data yet.",
   },
   fr: {
@@ -93,6 +101,10 @@ const i18n = {
     loadError: "Échec du chargement des données.",
     meteofranceTitle: "Météo extérieure",
     meteofranceWindLabel: "Vent",
+    mfNow: "Maintenant",
+    mfToday: "Aujourd'hui",
+    mfFeelsLike: "Ressenti",
+    mfRain: "Pluie",
     meteofranceNoData: "Pas encore de données météo.",
   },
 };
@@ -538,22 +550,31 @@ const weatherDescriptions = {
   "Neige faible": { ko: "약한 눈", en: "Light snow", icon: "❄️" },
   "Neige": { ko: "눈", en: "Snow", icon: "❄️" },
   "Neige forte": { ko: "강한 눈", en: "Heavy snow", icon: "❄️" },
+  "Pluie": { ko: "비", en: "Rain", icon: "🌧️" },
+  "Eclaircies": { ko: "맑은 구간", en: "Sunny spells", icon: "🌤️" },
+  "Bancs de brouillard": { ko: "안개 띠", en: "Fog patches", icon: "🌫️" },
+  "Brume": { ko: "옅은 안개", en: "Mist", icon: "🌫️" },
+  "Brouillard dense": { ko: "짙은 안개", en: "Dense fog", icon: "🌫️" },
+  "Variable": { ko: "구름 변화", en: "Variable", icon: "🌥️" },
+  "Slight rain": { ko: "약한 비", en: "Slight rain", fr: "Pluie faible", icon: "🌧️" },
+  "Overcast sky": { ko: "흐림", en: "Overcast", fr: "Couvert", icon: "☁️" },
 };
+
+const weatherIndex = new Map(Object.entries(weatherDescriptions).map(([k, v]) => [k.toLowerCase(), v]));
+
+function weatherEntry(desc) {
+  return weatherIndex.get((desc || "").trim().toLowerCase());
+}
 
 function translateWeatherDesc(desc) {
   if (!desc) return "";
-  const entry = weatherDescriptions[desc];
-  if (!entry || currentLang === "fr") return desc;
+  const entry = weatherEntry(desc);
+  if (!entry) return desc;
   return entry[currentLang] || desc;
 }
 
 function weatherIcon(desc) {
-  return weatherDescriptions[desc]?.icon ?? "";
-}
-
-function mfFormatDay(dateStr) {
-  const d = new Date(`${dateStr}T00:00:00`);
-  return d.toLocaleDateString(LOCALES[currentLang], { weekday: "short" });
+  return weatherEntry(desc)?.icon ?? "";
 }
 
 function renderMeteoFranceCurrent(cur) {
@@ -566,20 +587,253 @@ function renderMeteoFranceCurrent(cur) {
   );
 }
 
-function renderMeteoFranceForecast(fc) {
+const MF_COL_WIDTH = 60;
+const MF_HOURS_AHEAD = 24;
+const MF_CHART_HEIGHT = 84;
+const MF_NIGHT_ICONS = { "☀️": "🌙", "🌤️": "☁️", "🌦️": "🌧️" };
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+let mfTodayHours = [];
+let mfSelectedKey = null;
+
+function mfEl(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+function mfSvg(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// Rough sunrise/sunset for Brittany (about 48N, 2W), only used to swap day/night icons.
+function mfIsNight(date) {
+  const doy = Math.floor((date.getTime() - Date.UTC(date.getUTCFullYear(), 0, 0)) / 86400000);
+  const dayLength = 12.2 + 4 * Math.sin((2 * Math.PI * (doy - 80)) / 365);
+  const hour = date.getUTCHours() + date.getUTCMinutes() / 60;
+  return Math.abs(hour - 12.1) > dayLength / 2;
+}
+
+function mfHourIcon(h) {
+  const icon = weatherIcon(h.weather_desc);
+  return mfIsNight(new Date(h.forecast_for)) ? (MF_NIGHT_ICONS[icon] ?? icon) : icon;
+}
+
+function mfClock(date) {
+  return date.toLocaleTimeString(LOCALES[currentLang], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
+function mfTemp(v) {
+  return v == null ? "–" : `${Math.round(v)}°`;
+}
+
+function mfIsNow(h, index, now) {
+  return index === 0 && new Date(h.forecast_for) <= now;
+}
+
+function mfWeekday(date) {
+  return date.toLocaleDateString(LOCALES[currentLang], { weekday: "short" });
+}
+
+function mfStartsDay(hours, i) {
+  return i > 0 && new Date(hours[i].forecast_for).getDate() !== new Date(hours[i - 1].forecast_for).getDate();
+}
+
+function renderMeteoFranceHero(h, isNow, now = new Date()) {
+  const L = t();
+  const hero = document.getElementById("mf-today-hero");
+  const date = new Date(h.forecast_for);
+  document.getElementById("mf-today").classList.toggle("is-night", mfIsNight(date));
+
+  let timeLabel = mfClock(date);
+  if (isNow) timeLabel = L.mfNow;
+  else if (date.toDateString() !== now.toDateString()) timeLabel = `${mfWeekday(date)} ${timeLabel}`;
+
+  const main = mfEl("div", "mf-hero-main");
+  main.append(mfEl("span", "mf-hero-time", timeLabel), mfEl("span", "mf-hero-temp", mfTemp(h.temp_c)));
+
+  const sky = mfEl("div", "mf-hero-sky");
+  sky.append(mfEl("span", "mf-hero-icon", mfHourIcon(h)), mfEl("span", "mf-hero-desc", translateWeatherDesc(h.weather_desc)));
+
+  const wind = mfEl("span", "mf-hero-value");
+  if (h.wind_direction != null && h.wind_direction >= 0) {
+    const arrow = mfEl("span", "mf-arrow", "↑");
+    arrow.style.transform = `rotate(${h.wind_direction + 180}deg)`;
+    wind.append(arrow, " ");
+  }
+  wind.append(h.wind_speed == null ? "–" : `${Math.round(h.wind_speed * 3.6)} km/h`);
+
+  const rows = [
+    [L.meteofranceWindLabel, wind],
+    [L.metricLabels.humidity, h.humidity == null ? "–" : `${Math.round(h.humidity)}%`],
+    [L.mfRain, h.rain_1h == null ? "–" : `${h.rain_1h} mm`],
+    [L.mfFeelsLike, mfTemp(h.windchill_c)],
+  ];
+  const details = mfEl("ul", "mf-hero-details");
+  for (const [label, value] of rows) {
+    const li = mfEl("li");
+    const v = mfEl("span", "mf-hero-value");
+    v.append(value);
+    li.append(mfEl("span", "mf-hero-label", label), v);
+    details.append(li);
+  }
+
+  hero.replaceChildren(main, sky, details);
+}
+
+function mfBuildChart(hours) {
+  const width = hours.length * MF_COL_WIDTH;
+  const height = MF_CHART_HEIGHT;
+  const padTop = 26;
+  const padBottom = 12;
+  const svg = mfSvg("svg", { width, height, viewBox: `0 0 ${width} ${height}` });
+
+  const known = hours.map((h) => h.temp_c).filter((v) => v != null);
+  if (!known.length) return svg;
+  const min = Math.min(...known);
+  const max = Math.max(...known);
+  const span = max - min || 1;
+  const y = (v) => padTop + ((max - v) / span) * (height - padTop - padBottom);
+
+  const points = [];
+  hours.forEach((h, i) => {
+    if (h.temp_c != null) points.push({ i, x: i * MF_COL_WIDTH + MF_COL_WIDTH / 2, y: y(h.temp_c), temp: h.temp_c });
+  });
+
+  hours.forEach((_, i) => {
+    if (mfStartsDay(hours, i)) svg.append(mfSvg("line", { class: "mf-chart-break", x1: i * MF_COL_WIDTH, x2: i * MF_COL_WIDTH, y1: 0, y2: height }));
+  });
+
+  const line = points.map((p, k) => `${k ? "L" : "M"}${p.x} ${p.y}`).join(" ");
+  svg.append(mfSvg("path", { class: "mf-chart-line", d: line }));
+  for (const p of points) {
+    svg.append(mfSvg("circle", { class: "mf-chart-dot", "data-index": p.i, cx: p.x, cy: p.y, r: 3 }));
+    const label = mfSvg("text", { class: "mf-chart-label", "data-index": p.i, x: p.x, y: p.y - 10 });
+    label.textContent = mfTemp(p.temp);
+    svg.append(label);
+  }
+  return svg;
+}
+
+function mfBuildRain(hours) {
+  const row = mfEl("div", "mf-strip-rain");
+  hours.forEach((h, i) => {
+    const cell = mfEl("div", mfStartsDay(hours, i) ? "mf-rain-cell is-day-start" : "mf-rain-cell");
+    if (h.rain_1h > 0) {
+      const bar = mfEl("div", "mf-rain-bar");
+      bar.style.height = `${Math.max(5, Math.min(h.rain_1h / 2, 1) * 22)}px`;
+      cell.append(bar, mfEl("span", "", `${h.rain_1h} mm`));
+    }
+    row.append(cell);
+  });
+  return row;
+}
+
+function mfSelectHour(index, now = new Date()) {
+  const h = mfTodayHours[index];
+  if (!h) return;
+  mfSelectedKey = h.forecast_for;
+  renderMeteoFranceHero(h, mfIsNow(h, index, now), now);
+
+  const strip = document.getElementById("mf-today-strip");
+  const sel = strip.querySelector(".mf-strip-sel");
+  if (sel) sel.style.transform = `translateX(${index * MF_COL_WIDTH}px)`;
+  strip.querySelectorAll(".mf-strip-head").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.index) === index)));
+  strip.querySelectorAll("[data-index]").forEach((el) => {
+    if (el.tagName === "circle") el.setAttribute("r", Number(el.dataset.index) === index ? 5 : 3);
+    if (el.tagName === "text") el.classList.toggle("is-selected", Number(el.dataset.index) === index);
+  });
+}
+
+function renderMeteoFranceToday(fc, now = new Date()) {
+  const root = document.getElementById("mf-today");
+  const hourStart = new Date(now);
+  hourStart.setMinutes(0, 0, 0);
+  const hours = (fc.hourly || []).filter((h) => new Date(h.forecast_for) >= hourStart).slice(0, MF_HOURS_AHEAD + 1);
+  root.hidden = hours.length === 0;
+  if (!hours.length) return;
+
+  mfTodayHours = hours;
+  const index = Math.max(0, hours.findIndex((h) => h.forecast_for === mfSelectedKey));
+
+  const strip = document.getElementById("mf-today-strip");
+  const scrollLeft = strip.scrollLeft;
+
+  const inner = mfEl("div", "mf-strip-inner");
+  inner.style.width = `${hours.length * MF_COL_WIDTH}px`;
+  const sel = mfEl("div", "mf-strip-sel");
+  sel.style.width = `${MF_COL_WIDTH}px`;
+
+  const heads = mfEl("div", "mf-strip-heads");
+  hours.forEach((h, i) => {
+    const button = mfEl("button", "mf-strip-head");
+    button.type = "button";
+    button.dataset.index = i;
+    if (mfStartsDay(hours, i)) button.classList.add("is-day-start");
+    button.append(
+      mfEl("span", "mf-head-day", mfStartsDay(hours, i) ? mfWeekday(new Date(h.forecast_for)) : ""),
+      mfEl("span", "mf-head-time", mfIsNow(h, i, now) ? t().mfNow : mfClock(new Date(h.forecast_for))),
+      mfEl("span", "mf-head-icon", mfHourIcon(h)),
+    );
+    heads.append(button);
+  });
+
+  inner.append(sel, heads, mfBuildChart(hours), mfBuildRain(hours));
+  inner.addEventListener("click", (e) => {
+    const x = e.clientX - inner.getBoundingClientRect().left;
+    mfSelectHour(Math.min(hours.length - 1, Math.max(0, Math.floor(x / MF_COL_WIDTH))));
+  });
+  strip.replaceChildren(inner);
+  strip.scrollLeft = scrollLeft;
+
+  mfSelectHour(index, now);
+}
+
+function mfDateKey(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function renderMeteoFranceForecast(fc, now = new Date()) {
   const container = document.getElementById("mf-forecast");
+  const days = fc.daily.slice(0, 6);
+  const lows = days.map((d) => d.temp_min).filter((v) => v != null);
+  const highs = days.map((d) => d.temp_max).filter((v) => v != null);
+  const min = Math.min(...lows);
+  const span = Math.max(...highs) - min || 1;
+  const todayKey = mfDateKey(now);
+  const locale = LOCALES[currentLang];
+
   container.replaceChildren(
-    ...fc.daily.slice(0, 6).map((d) => {
-      const el = document.createElement("div");
-      el.className = "mf-day";
-      el.innerHTML = `<span class="mf-day-label"></span><span class="mf-day-icon"></span><span class="mf-day-desc"></span><span class="mf-day-temps"></span>`;
-      el.querySelector(".mf-day-label").textContent = mfFormatDay(d.date);
-      el.querySelector(".mf-day-icon").textContent = weatherIcon(d.weather_desc);
-      el.querySelector(".mf-day-desc").textContent = translateWeatherDesc(d.weather_desc);
-      const lo = d.temp_min == null ? "–" : `${Math.round(d.temp_min)}°`;
-      const hi = d.temp_max == null ? "–" : `${Math.round(d.temp_max)}°`;
-      el.querySelector(".mf-day-temps").textContent = `${lo} / ${hi}`;
-      return el;
+    ...days.map((d) => {
+      const date = new Date(`${d.date}T00:00:00`);
+      const isToday = d.date === todayKey;
+      const row = mfEl("div", isToday ? "mf-day is-today" : "mf-day");
+
+      const name = mfEl("div", "mf-day-name");
+      name.append(
+        mfEl("span", "mf-day-label", isToday ? t().mfToday : date.toLocaleDateString(locale, { weekday: "short" })),
+        mfEl("span", "mf-day-date", date.toLocaleDateString(locale, { month: "short", day: "numeric" })),
+      );
+
+      const sky = mfEl("div", "mf-day-sky");
+      sky.append(mfEl("span", "mf-day-desc", translateWeatherDesc(d.weather_desc)));
+      if (d.precip_24h > 0) sky.append(mfEl("span", "mf-day-rain", `${d.precip_24h} mm`));
+
+      const range = mfEl("div", "mf-day-range");
+      const track = mfEl("span", "mf-range-track");
+      if (d.temp_min != null && d.temp_max != null) {
+        const fill = mfEl("span", "mf-range-fill");
+        fill.style.left = `${((d.temp_min - min) / span) * 100}%`;
+        fill.style.width = `${Math.max(((d.temp_max - d.temp_min) / span) * 100, 8)}%`;
+        track.append(fill);
+      }
+      range.append(mfEl("span", "mf-range-lo", mfTemp(d.temp_min)), track, mfEl("span", "mf-range-hi", mfTemp(d.temp_max)));
+
+      row.append(name, mfEl("span", "mf-day-icon", weatherIcon(d.weather_desc)), sky, range);
+      return row;
     }),
   );
 }
@@ -589,7 +843,10 @@ function renderMeteoFrance() {
   if (!lastMFCurrent) return;
   document.getElementById("mf-title").textContent = t().meteofranceTitle;
   renderMeteoFranceCurrent(lastMFCurrent);
-  if (lastMFForecast) renderMeteoFranceForecast(lastMFForecast);
+  if (lastMFForecast) {
+    renderMeteoFranceToday(lastMFForecast);
+    renderMeteoFranceForecast(lastMFForecast);
+  }
   section.hidden = false;
 }
 
