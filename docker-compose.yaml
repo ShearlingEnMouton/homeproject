@@ -4,8 +4,6 @@ services:
   homeproject:
     build:
       context: .
-      ssh:
-        - default
     image: homeproject:latest
     container_name: homeproject
     restart: unless-stopped
