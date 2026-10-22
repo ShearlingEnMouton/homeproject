@@ -2,14 +2,22 @@ package homeprojectserver
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/ShearlingEnMouton/library/logger"
 )
 
 const (
-	meteoFrancePollInterval = time.Hour
-	meteoFrancePollTimeout  = 20 * time.Second
+	meteoFrancePollInterval    = time.Hour
+	meteoFrancePollTimeout     = 20 * time.Second
+	meteoFranceMinRefresh      = 10 * time.Minute
+	meteoFranceOnDemandTimeout = 8 * time.Second
+)
+
+var (
+	meteoFranceRefreshMu   sync.Mutex
+	meteoFranceLastRefresh time.Time
 )
 
 // StartMeteoFranceScheduler polls the Meteo-France observation and forecast
@@ -21,7 +29,7 @@ func StartMeteoFranceScheduler(ctx context.Context) {
 }
 
 func runMeteoFranceScheduler(ctx context.Context) {
-	pollMeteoFranceOnce(ctx)
+	refreshMeteoFranceIfStale(ctx)
 
 	ticker := time.NewTicker(meteoFrancePollInterval)
 	defer ticker.Stop()
@@ -31,9 +39,31 @@ func runMeteoFranceScheduler(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			pollMeteoFranceOnce(ctx)
+			refreshMeteoFranceIfStale(ctx)
 		}
 	}
+}
+
+// refreshMeteoFranceIfStale fetches from Meteo-France unless a fetch already
+// ran in the last meteoFranceMinRefresh. The mutex makes concurrent callers
+// (scheduler, page loads) share one fetch and serialises the token handling.
+func refreshMeteoFranceIfStale(ctx context.Context) {
+	meteoFranceRefreshMu.Lock()
+	defer meteoFranceRefreshMu.Unlock()
+	if time.Since(meteoFranceLastRefresh) < meteoFranceMinRefresh {
+		return
+	}
+	meteoFranceLastRefresh = time.Now()
+	pollMeteoFranceOnce(ctx)
+}
+
+// refreshMeteoFranceOnDemand is called by the API handlers so a page load
+// sees fresh data. It is detached from the request so a closed tab does not
+// abort the fetch, and bounded so a slow upstream only delays the page briefly.
+func refreshMeteoFranceOnDemand(ctx context.Context) {
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), meteoFranceOnDemandTimeout)
+	defer cancel()
+	refreshMeteoFranceIfStale(rctx)
 }
 
 func pollMeteoFranceOnce(ctx context.Context) {

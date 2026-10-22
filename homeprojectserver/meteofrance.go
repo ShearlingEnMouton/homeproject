@@ -50,10 +50,20 @@ func obtainMeteoFranceToken(ctx context.Context) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		logger.Err("", "GetToken request failed: status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("token request failed: status %d", resp.StatusCode)
+	}
+
 	tokenResp := &tokenResponse{}
 	if err := json.NewDecoder(resp.Body).Decode(tokenResp); err != nil {
 		logger.Err("", "Failed to decode token response: %s", err)
 		return err
+	}
+
+	if tokenResp.AccessToken == "" {
+		return fmt.Errorf("token response has no access_token")
 	}
 
 	meteoFranceToken = tokenResp.AccessToken
@@ -93,19 +103,10 @@ func doMeteoFranceRequest(ctx context.Context, method, reqURL string) (*http.Res
 	return meteoFranceHTTPClient.Do(req)
 }
 
+// The token lives one hour. An expired token is answered with a plain 401
+// ("Invalid Credentials"), so any 401 means: get a new token and retry once.
 func meteoFranceTokenExpired(resp *http.Response) bool {
-	if resp.StatusCode != http.StatusUnauthorized {
-		return false
-	}
-	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		return false
-	}
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false
-	}
-	resp.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
-	return strings.Contains(string(bodyBytes), "Invalid JWT token")
+	return resp.StatusCode == http.StatusUnauthorized
 }
 
 // --- Observation (official DPObs API) ---
