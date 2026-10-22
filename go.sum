@@ -1,5 +1,5 @@
-github.com/ShearlingEnMouton/library v0.1.0-rc00 h1:ShLtz8dfPnP5PLG4GzhWj+5l38kyeKvq9s0amZmURyA=
-github.com/ShearlingEnMouton/library v0.1.0-rc00/go.mod h1:2jKavv4WQc+jiN7BDa4X4UHI4lixnV6CK5VsfInThIQ=
+github.com/ShearlingEnMouton/library v0.1.0-rc00 h1:vONbdcF9e4Sbrwhfj+34MUebWCQwUWLML/YQYARXylE=
+github.com/ShearlingEnMouton/library v0.1.0-rc00/go.mod h1:Ns3vyIv7LoXeBk/oTp1z+rkkqi7IEHERUKAhl/LK5rM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
